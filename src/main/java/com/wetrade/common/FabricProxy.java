@@ -3,8 +3,65 @@
  */
 package com.wetrade.common;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.concurrent.TimeoutException;
+
+import org.hyperledger.fabric.gateway.Contract;
+import org.hyperledger.fabric.gateway.ContractException;
+import org.hyperledger.fabric.gateway.Gateway;
+import org.hyperledger.fabric.gateway.Network;
+import org.hyperledger.fabric.gateway.Wallet;
+import org.hyperledger.fabric.gateway.Wallet.Identity;
+import org.json.JSONObject;
+
 public class FabricProxy {
-    public boolean someLibraryMethod() {
-        return true;
+
+    private FabricProxyConfig proxyConfig;
+
+    private Wallet wallet;
+
+    private Gateway.Builder gateway;
+
+    private HashMap<String, Gateway> gatewayMap = new HashMap<String, Gateway>();
+
+    public FabricProxy(FabricProxyConfig proxyConfig) throws IOException {
+        this.proxyConfig = proxyConfig;
+
+        this.wallet = Wallet.createFileSystemWallet(proxyConfig.getWalletPath());
+
+    }
+
+    private Gateway setupGateway(String user) throws IOException {
+        Identity identity = this.wallet.get(user);
+        if (this.gateway == null) {
+            Gateway.Builder builder = Gateway.createBuilder()
+                        .identity(this.wallet, user)
+                        .networkConfig(proxyConfig.getConnectionProfilePath());
+            Gateway gateway = builder.connect();
+            this.gatewayMap.put(new String(identity.getPrivateKey().getEncoded()), gateway);
+            return gateway;
+
+        } else {
+            return this.gatewayMap.get(new String(identity.getPrivateKey().getEncoded()));
+        }
+    }
+
+    public JSONObject evaluateTransaction(String user, String functionName, String... args) throws IOException, ContractException {
+        Gateway gateway = this.setupGateway(user);
+        Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName());
+
+        byte[] result = contract.evaluateTransaction(functionName, args);
+        return new JSONObject(new String(result));
+    }
+
+    public JSONObject submitTransaction(String user, String functionName, String... args) throws IOException, ContractException, TimeoutException, InterruptedException{
+        Gateway gateway = this.setupGateway(user);
+        Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName());
+
+        byte[] result = contract.submitTransaction(functionName, args);
+        return new JSONObject(new String(result));
     }
 }
