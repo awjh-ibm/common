@@ -4,15 +4,19 @@
 package com.wetrade.common;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 import org.hyperledger.fabric.gateway.Contract;
+import org.hyperledger.fabric.gateway.ContractEvent;
 import org.hyperledger.fabric.gateway.ContractException;
 import org.hyperledger.fabric.gateway.Gateway;
 import org.hyperledger.fabric.gateway.Network;
 import org.hyperledger.fabric.gateway.Wallet;
 import org.hyperledger.fabric.gateway.Wallet.Identity;
+import org.hyperledger.fabric.sdk.BlockEvent;
 import org.json.JSONObject;
 
 public class FabricProxy {
@@ -21,47 +25,124 @@ public class FabricProxy {
 
     private Wallet wallet;
 
-    private Gateway.Builder gateway;
-
     private HashMap<String, Gateway> gatewayMap = new HashMap<String, Gateway>();
 
-    public FabricProxy(FabricProxyConfig proxyConfig) throws IOException {
+
+    public FabricProxy(FabricProxyConfig proxyConfig) throws FabricProxyException {
         this.proxyConfig = proxyConfig;
 
-        this.wallet = Wallet.createFileSystemWallet(proxyConfig.getWalletPath());
+        try {
+            this.wallet = Wallet.createFileSystemWallet(proxyConfig.getWalletPath());
+        } catch (IOException exception) {
+            throw new FabricProxyException(exception.getMessage());
+        }
 
     }
 
-    private Gateway setupGateway(String user) throws IOException {
+    private Identity getIdentity(String user) throws IOException, FabricProxyException {
         Identity identity = this.wallet.get(user);
-        if (this.gateway == null) {
+
+        if (identity == null) {
+            throw new FabricProxyException("Could not find identity '"+user+"'");
+        }
+        return identity;
+    }
+
+    private Gateway setupGateway(String user) throws IOException, FabricProxyException {
+        Identity identity = this.getIdentity(user);
+        String keyHash = new String(identity.getPrivateKey().getEncoded(), StandardCharsets.UTF_8) + "_" + this.proxyConfig.getChannelName();
+        if (!this.gatewayMap.containsKey(keyHash)) {
+            System.out.println("Create new gateway");
             Gateway.Builder builder = Gateway.createBuilder()
                         .identity(this.wallet, user)
                         .networkConfig(proxyConfig.getConnectionProfilePath());
+                        // .discovery(true);
             Gateway gateway = builder.connect();
-            this.gatewayMap.put(new String(identity.getPrivateKey().getEncoded()), gateway);
+            this.gatewayMap.put(keyHash, gateway);
             return gateway;
 
         } else {
-            return this.gatewayMap.get(new String(identity.getPrivateKey().getEncoded()));
+            System.out.println("Get existing gateway");
+            return this.gatewayMap.get(keyHash);
         }
     }
 
-    public JSONObject evaluateTransaction(String user, String functionName, String... args) throws IOException, ContractException {
+    public String evaluateTransaction(String user, String functionName, String... args) throws IOException, ContractException, FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
         Contract contract = network.getContract(this.proxyConfig.getContractName());
 
         byte[] result = contract.evaluateTransaction(functionName, args);
-        return new JSONObject(new String(result));
+        return new String(result, StandardCharsets.UTF_8);
     }
 
-    public JSONObject submitTransaction(String user, String functionName, String... args) throws IOException, ContractException, TimeoutException, InterruptedException{
+    public String evaluateTransaction(String user, String functionName) throws IOException, ContractException, FabricProxyException {
+        Gateway gateway = this.setupGateway(user);
+        Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName());
+
+        byte[] result = contract.evaluateTransaction(functionName);
+        return new String(result, StandardCharsets.UTF_8);
+    }
+
+    public String submitTransaction(String user, String functionName, String... args) throws IOException, ContractException, TimeoutException, InterruptedException, FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
         Contract contract = network.getContract(this.proxyConfig.getContractName());
 
         byte[] result = contract.submitTransaction(functionName, args);
-        return new JSONObject(new String(result));
+        return new String(result, StandardCharsets.UTF_8);
+    }
+
+    public String submitTransaction(String user, String functionName) throws IOException, ContractException, TimeoutException, InterruptedException, FabricProxyException {
+        Gateway gateway = this.setupGateway(user);
+        Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName());
+
+        byte[] result = contract.submitTransaction(functionName, new String[]{});
+        return new String(result, StandardCharsets.UTF_8);
+    }
+
+    public Consumer<ContractEvent> addContractListener(String user, String eventName, Consumer<ContractEvent> contractListener) throws IOException, FabricProxyException  {
+        Gateway gateway = this.setupGateway(user);
+        Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName());
+
+        return contract.addContractListener(contractListener);
+    }
+
+    public void removeContractListener(String user, Consumer<ContractEvent> listener) throws IOException, FabricProxyException  {
+        Gateway gateway = this.setupGateway(user);
+        Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName());
+
+        contract.removeContractListener(listener);
+    }
+
+    public Consumer<BlockEvent> addBlockListener(String user, Consumer<BlockEvent> blockListener) throws IOException, FabricProxyException  {
+        Gateway gateway = this.setupGateway(user);
+        Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
+
+        return network.addBlockListener(blockListener);
+    }
+
+    public Consumer<BlockEvent> addBlockListener(String user, Consumer<BlockEvent> blockListener, Long startBlock) throws IOException, FabricProxyException  {
+        Gateway gateway = this.setupGateway(user);
+        Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
+
+        return network.addBlockListener(startBlock, blockListener);
+    }
+
+    public void removeBlockListener(String user, Consumer<BlockEvent> listener) throws IOException, FabricProxyException  {
+        Gateway gateway = this.setupGateway(user);
+        Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
+
+        network.removeBlockListener(listener);
+    }
+
+    public JSONObject getMetadata(String user) throws IOException, ContractException, FabricProxyException {
+        String METADATA_FUNC = "org.hyperledger.fabric:GetMetadata";
+        String metadataString = this.evaluateTransaction(user, METADATA_FUNC);
+        return new JSONObject(metadataString);
     }
 }

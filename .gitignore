@@ -29,3 +29,8 @@ build
 hs_err_pid*
 
 .vscode
+
+src/fixtures/connection.json
+src/fixtures/local_fabric_connection.json
+src/fixtures/wallet/*
+!gradle/wrapper/gradle-wrapper.jar

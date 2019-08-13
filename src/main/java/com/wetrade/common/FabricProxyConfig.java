@@ -23,6 +23,7 @@ public class FabricProxyConfig {
         this.walletPath = walletPath;
         this.connectionProfilePath = connectionProfilePath;
         this.contractName = contractName;
+        this.channelName = channelName;
         this.org = org;
     }
 

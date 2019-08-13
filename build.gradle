@@ -8,7 +8,8 @@
 
 plugins {
     // Apply the java-library plugin to add support for Java Library
-    id 'java-library'
+    id 'com.github.johnrengelman.shadow' version '5.1.0'
+    id 'java'
 }
 
 repositories {
@@ -21,11 +22,15 @@ repositories {
     maven {
         url 'https://nexus.hyperledger.org/content/repositories/snapshots/'
     }
+
+    maven {
+        url 'https://jitpack.io'
+    }
 }
 
 dependencies {
     // This dependency is exported to consumers, that is to say found on their compile classpath.
-    api 'org.apache.commons:commons-math3:3.6.1'
+    // api 'org.apache.commons:commons-math3:3.6.1'
 
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
     implementation 'com.google.guava:guava:27.1-jre'
@@ -34,6 +39,22 @@ dependencies {
 
     compile group: 'org.json', name: 'json', version: '20180813'
 
+    compile 'com.github.skebir:prettytable:v1.0'
+
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
+}
+
+shadowJar {
+    baseName = 'FabricProxyHarness'
+    version = null
+    classifier = null
+
+    manifest {
+        attributes 'Main-Class': 'test.ProxyTestHarness'
+    }
+}
+
+tasks.withType(JavaCompile) {
+  options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-parameters"
 }

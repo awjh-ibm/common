@@ -3,11 +3,6 @@
  */
 package com.wetrade.common;
 
-import org.json.JSONObject;
-import org.junit.Test;
-import static org.junit.Assert.*;
-
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
