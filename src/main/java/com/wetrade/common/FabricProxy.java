@@ -39,8 +39,13 @@ public class FabricProxy {
 
     }
 
-    private Identity getIdentity(String user) throws IOException, FabricProxyException {
-        Identity identity = this.wallet.get(user);
+    private Identity getIdentity(String user) throws FabricProxyException {
+        Identity identity;
+        try {
+            identity = this.wallet.get(user);
+        } catch (IOException exception) {
+            throw new FabricProxyException(exception.getMessage());
+        }
 
         if (identity == null) {
             throw new FabricProxyException("Could not find identity '"+user+"'");
@@ -48,16 +53,21 @@ public class FabricProxy {
         return identity;
     }
 
-    private Gateway setupGateway(String user) throws IOException, FabricProxyException {
+    private Gateway setupGateway(String user) throws FabricProxyException {
         Identity identity = this.getIdentity(user);
         String keyHash = new String(identity.getPrivateKey().getEncoded(), StandardCharsets.UTF_8) + "_" + this.proxyConfig.getChannelName();
         if (!this.gatewayMap.containsKey(keyHash)) {
             System.out.println("Create new gateway");
-            Gateway.Builder builder = Gateway.createBuilder()
-                        .identity(this.wallet, user)
-                        .networkConfig(proxyConfig.getConnectionProfilePath());
-                        // .discovery(true);
-            Gateway gateway = builder.connect();
+            Gateway gateway;
+            try {
+                Gateway.Builder builder = Gateway.createBuilder()
+                            .identity(this.wallet, user)
+                            .networkConfig(proxyConfig.getConnectionProfilePath());
+                            // .discovery(true);
+                gateway = builder.connect();
+            } catch (IOException exception) {
+                throw new FabricProxyException(exception.getMessage());
+            }
             this.gatewayMap.put(keyHash, gateway);
             return gateway;
 
@@ -67,21 +77,31 @@ public class FabricProxy {
         }
     }
 
-    public String evaluateTransaction(String user, String functionName, String... args) throws IOException, ContractException, FabricProxyException {
+    public String evaluateTransaction(String user, String functionName, String... args) throws FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
         Contract contract = network.getContract(this.proxyConfig.getContractName());
 
-        byte[] result = contract.evaluateTransaction(functionName, args);
+        byte[] result;
+        try {
+            result = contract.evaluateTransaction(functionName, args);
+        } catch (ContractException exception) {
+            throw new FabricProxyException(exception.getMessage());
+        }
         return new String(result, StandardCharsets.UTF_8);
     }
 
-    public String evaluateTransaction(String user, String functionName) throws IOException, ContractException, FabricProxyException {
+    public String evaluateTransaction(String user, String functionName) throws FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
         Contract contract = network.getContract(this.proxyConfig.getContractName());
 
-        byte[] result = contract.evaluateTransaction(functionName);
+        byte[] result;
+        try {
+            result = contract.evaluateTransaction(functionName);
+        } catch (ContractException exception) {
+            throw new FabricProxyException(exception.getMessage());
+        }
         return new String(result, StandardCharsets.UTF_8);
     }
 

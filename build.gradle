@@ -7,14 +7,20 @@
  */
 
 plugins {
+    id 'maven-publish'
     // Apply the java-library plugin to add support for Java Library
     id 'com.github.johnrengelman.shadow' version '5.1.0'
     id 'java'
 }
 
+version = '0.0.1'
+group = 'com.wetrade'
+sourceCompatibility=1.8
+
 repositories {
     // Use jcenter for resolving dependencies.
     // You can declare any Maven/Ivy/file repository here.
+    mavenLocal();
     jcenter()
     maven {
         url 'https://oss.sonatype.org/content/repositories/snapshots/'
@@ -57,4 +63,12 @@ shadowJar {
 
 tasks.withType(JavaCompile) {
   options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-parameters"
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from(components.java)
+        }
+    }
 }
