@@ -6,14 +6,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.concurrent.TimeoutException;
 
 import com.wetrade.common.FabricProxy;
 import com.wetrade.common.FabricProxyConfig;
 import com.wetrade.common.FabricProxyException;
 
 import org.hyperledger.fabric.gateway.ContractEvent;
-import org.hyperledger.fabric.gateway.ContractException;
 import org.hyperledger.fabric.sdk.BlockEvent;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -76,20 +74,12 @@ public class ProxyTestHarness {
 
 
             System.out.println(ProxyTestHarness.jsonStringToTable(result));
-            Thread.sleep(100);
-        } catch (IOException exception) {
-            exception.printStackTrace();
-        } catch (ContractException exception) {
-            exception.printStackTrace();
-        } catch (TimeoutException exception) {
-            exception.printStackTrace();
-        } catch (InterruptedException exception) {
+            // Thread.sleep(100);
+        } catch (FabricProxyException exception) {
             exception.printStackTrace();
         } catch (ArrayIndexOutOfBoundsException exception) {
             exception.printStackTrace();
             ProxyTestHarness.printCallHelp();
-        } catch (FabricProxyException exception) {
-            exception.printStackTrace();
         }
     }
 

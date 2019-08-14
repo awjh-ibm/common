@@ -62,8 +62,8 @@ public class FabricProxy {
             try {
                 Gateway.Builder builder = Gateway.createBuilder()
                             .identity(this.wallet, user)
-                            .networkConfig(proxyConfig.getConnectionProfilePath());
-                            // .discovery(true);
+                            .networkConfig(proxyConfig.getConnectionProfilePath())
+                            .discovery(false);
                 gateway = builder.connect();
             } catch (IOException exception) {
                 throw new FabricProxyException(exception.getMessage());
@@ -105,21 +105,31 @@ public class FabricProxy {
         return new String(result, StandardCharsets.UTF_8);
     }
 
-    public String submitTransaction(String user, String functionName, String... args) throws IOException, ContractException, TimeoutException, InterruptedException, FabricProxyException {
+    public String submitTransaction(String user, String functionName, String... args) throws FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
         Contract contract = network.getContract(this.proxyConfig.getContractName());
 
-        byte[] result = contract.submitTransaction(functionName, args);
+        byte[] result;
+        try {
+            result = contract.submitTransaction(functionName, args);
+        } catch (ContractException | TimeoutException | InterruptedException exception) {
+            throw new FabricProxyException(exception.getMessage());
+        }
         return new String(result, StandardCharsets.UTF_8);
     }
 
-    public String submitTransaction(String user, String functionName) throws IOException, ContractException, TimeoutException, InterruptedException, FabricProxyException {
+    public String submitTransaction(String user, String functionName) throws FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
         Contract contract = network.getContract(this.proxyConfig.getContractName());
 
-        byte[] result = contract.submitTransaction(functionName, new String[]{});
+        byte[] result;
+        try {
+            result = contract.submitTransaction(functionName, new String[]{});
+        } catch (ContractException | TimeoutException | InterruptedException exception) {
+            throw new FabricProxyException(exception.getMessage());
+        }
         return new String(result, StandardCharsets.UTF_8);
     }
 
