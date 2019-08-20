@@ -48,6 +48,7 @@ public class ProxyTestHarness {
 
     private static void call(String[] args, FabricProxyConfig config) {
         try {
+            String contractName = "PurchaseOrderContract";
             String isSubmitStr = args[0];
             boolean isSubmit = isSubmitStr.equals("submit");
             String fcnName = args[1];
@@ -67,9 +68,9 @@ public class ProxyTestHarness {
 
             String result;
             if (isSubmit) {
-                result = proxy.submitTransaction(user, fcnName, fcnArgs);
+                result = proxy.submitTransaction(user, contractName, fcnName, fcnArgs);
             } else {
-                result = proxy.evaluateTransaction(user, fcnName, fcnArgs);
+                result = proxy.evaluateTransaction(user, contractName, fcnName, fcnArgs);
             }
 
 
@@ -85,6 +86,7 @@ public class ProxyTestHarness {
 
     private static void listen(String[] args, FabricProxyConfig config) {
         try {
+            String contractName = "purchaseOrderContract";
             String user = args[0];
             String eventType = args[1];
             String eventName = "";
@@ -97,7 +99,7 @@ public class ProxyTestHarness {
 
             switch (eventType) {
                 case "contract":
-                    ProxyTestHarness.createContractListener(proxy, user, eventName);
+                    ProxyTestHarness.createContractListener(proxy, contractName, user, eventName);
                 break;
                 case "block":
                     ProxyTestHarness.createBlockListener(proxy, user);
@@ -115,8 +117,8 @@ public class ProxyTestHarness {
         while(true) {}
     }
 
-    private static void createContractListener(FabricProxy proxy, String user, String eventName) throws IOException, FabricProxyException {
-        proxy.addContractListener(user, eventName, (ContractEvent contractEvent) -> {
+    private static void createContractListener(FabricProxy proxy, String user, String contractName, String eventName) throws IOException, FabricProxyException {
+        proxy.addContractListener(user, eventName, contractName, (ContractEvent contractEvent) -> {
             byte[] payload = contractEvent.getPayload().get();
             System.out.println("Received Contract Event: " + contractEvent.getName() + ": " + new String(payload, StandardCharsets.UTF_8));
         });

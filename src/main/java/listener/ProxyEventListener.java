@@ -40,7 +40,7 @@ public class ProxyEventListener {
 
             switch (eventType) {
                 case "contract":
-                    ProxyEventListener.createContractListener(proxy, user, eventName);
+                    ProxyEventListener.createContractListener(proxy, user, contractName, eventName);
                 break;
                 case "block":
                     ProxyEventListener.createBlockListener(proxy, user);
@@ -56,8 +56,8 @@ public class ProxyEventListener {
         }
     }
 
-    private static void createContractListener(FabricProxy proxy, String user, String eventName) throws IOException, FabricProxyException {
-        proxy.addContractListener(user, eventName, (ContractEvent contractEvent) -> {
+    private static void createContractListener(FabricProxy proxy, String user, String contractName,  String eventName) throws IOException, FabricProxyException {
+        proxy.addContractListener(user, contractName, eventName, (ContractEvent contractEvent) -> {
             byte[] payload = contractEvent.getPayload().get();
             System.out.println("Received Contract Event: " + contractEvent.getName() + ": " + new String(payload, StandardCharsets.UTF_8));
 

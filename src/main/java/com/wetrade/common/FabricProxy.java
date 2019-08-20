@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
+import com.wetrade.utils.Timer;
+
 import org.hyperledger.fabric.gateway.Contract;
 import org.hyperledger.fabric.gateway.ContractEvent;
 import org.hyperledger.fabric.gateway.ContractException;
@@ -77,74 +79,86 @@ public class FabricProxy {
         }
     }
 
-    public String evaluateTransaction(String user, String functionName, String... args) throws FabricProxyException {
+    public String evaluateTransaction(String user, String subContractName, String functionName, String... args) throws FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
-        Contract contract = network.getContract(this.proxyConfig.getContractName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName(), subContractName);
 
         byte[] result;
         try {
+            Timer timer = new Timer();
+            timer.tic();
             result = contract.evaluateTransaction(functionName, args);
+            System.out.println("[" + subContractName + "." + functionName + "] took " + timer.toc() + "s");
         } catch (ContractException exception) {
             throw new FabricProxyException(exception.getMessage());
         }
         return new String(result, StandardCharsets.UTF_8);
     }
 
-    public String evaluateTransaction(String user, String functionName) throws FabricProxyException {
+    public String evaluateTransaction(String user, String subContractName, String functionName) throws FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
-        Contract contract = network.getContract(this.proxyConfig.getContractName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName(), subContractName);
 
         byte[] result;
         try {
+            Timer timer = new Timer();
+            timer.tic();
             result = contract.evaluateTransaction(functionName);
+            System.out.println("[" + subContractName + "." + functionName + "] took " + timer.toc() + "s");
         } catch (ContractException exception) {
             throw new FabricProxyException(exception.getMessage());
         }
         return new String(result, StandardCharsets.UTF_8);
     }
 
-    public String submitTransaction(String user, String functionName, String... args) throws FabricProxyException {
+    public String submitTransaction(String user, String subContractName, String functionName, String... args) throws FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
-        Contract contract = network.getContract(this.proxyConfig.getContractName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName(), subContractName);
 
         byte[] result;
         try {
+            Timer timer = new Timer();
+            timer.tic();
             result = contract.submitTransaction(functionName, args);
+            System.out.println("[" + subContractName + "." + functionName + "] took " + timer.toc() + "s");
         } catch (ContractException | TimeoutException | InterruptedException exception) {
             throw new FabricProxyException(exception.getMessage());
         }
         return new String(result, StandardCharsets.UTF_8);
     }
 
-    public String submitTransaction(String user, String functionName) throws FabricProxyException {
+    public String submitTransaction(String user, String subContractName, String functionName) throws FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
-        Contract contract = network.getContract(this.proxyConfig.getContractName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName(), subContractName);
 
         byte[] result;
         try {
+            Timer timer = new Timer();
+            timer.tic();
             result = contract.submitTransaction(functionName, new String[]{});
+            System.out.println("[" + subContractName + "." + functionName + "] took " + timer.toc() + "s");
         } catch (ContractException | TimeoutException | InterruptedException exception) {
             throw new FabricProxyException(exception.getMessage());
         }
         return new String(result, StandardCharsets.UTF_8);
     }
 
-    public Consumer<ContractEvent> addContractListener(String user, String eventName, Consumer<ContractEvent> contractListener) throws IOException, FabricProxyException  {
+    public Consumer<ContractEvent> addContractListener(String user, String subContractName, String eventName, Consumer<ContractEvent> contractListener) throws IOException, FabricProxyException  {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
-        Contract contract = network.getContract(this.proxyConfig.getContractName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName(), subContractName);
 
         return contract.addContractListener(contractListener);
     }
 
-    public void removeContractListener(String user, Consumer<ContractEvent> listener) throws IOException, FabricProxyException  {
+    public void removeContractListener(String user, String subContractName, Consumer<ContractEvent> listener) throws IOException, FabricProxyException  {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
-        Contract contract = network.getContract(this.proxyConfig.getContractName());
+        Contract contract = network.getContract(this.proxyConfig.getContractName(), subContractName);
 
         contract.removeContractListener(listener);
     }
@@ -170,9 +184,9 @@ public class FabricProxy {
         network.removeBlockListener(listener);
     }
 
-    public JSONObject getMetadata(String user) throws IOException, ContractException, FabricProxyException {
+    public JSONObject getMetadata(String user, String subContractName) throws IOException, ContractException, FabricProxyException {
         String METADATA_FUNC = "org.hyperledger.fabric:GetMetadata";
-        String metadataString = this.evaluateTransaction(user, METADATA_FUNC);
+        String metadataString = this.evaluateTransaction(user, subContractName, METADATA_FUNC);
         return new JSONObject(metadataString);
     }
 }
