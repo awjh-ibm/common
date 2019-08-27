@@ -6,6 +6,8 @@ package com.wetrade.common;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
@@ -16,6 +18,7 @@ import org.hyperledger.fabric.gateway.ContractEvent;
 import org.hyperledger.fabric.gateway.ContractException;
 import org.hyperledger.fabric.gateway.Gateway;
 import org.hyperledger.fabric.gateway.Network;
+import org.hyperledger.fabric.gateway.Transaction;
 import org.hyperledger.fabric.gateway.Wallet;
 import org.hyperledger.fabric.gateway.Wallet.Identity;
 import org.hyperledger.fabric.sdk.BlockEvent;
@@ -97,54 +100,47 @@ public class FabricProxy {
     }
 
     public String evaluateTransaction(String user, String subContractName, String functionName) throws FabricProxyException {
+        return this.evaluateTransaction(user, subContractName, functionName, new String[0]);
+    }
+
+    public String submitTransaction(String user, String subContractName, String functionName, Map<String, String> transientData, String... args) throws FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
         Contract contract = network.getContract(this.proxyConfig.getContractName(), subContractName);
+
+        Map<String, byte[]> transientDataAsBytes = new HashMap<String, byte[]>();
+
+        if (transientData != null) {
+            for (Entry<String, String> entry : transientData.entrySet()) {
+                transientDataAsBytes.put(entry.getKey(), entry.getValue().getBytes());
+            }
+        }
+
+        Transaction tx = contract.createTransaction(functionName);
+        tx.setTransient(transientDataAsBytes);
 
         byte[] result;
         try {
             Timer timer = new Timer();
             timer.tic();
-            result = contract.evaluateTransaction(functionName);
+            result = tx.submit(args);
             System.out.println("[" + subContractName + "." + functionName + "] took " + timer.toc() + "s");
-        } catch (ContractException exception) {
+        } catch (ContractException | TimeoutException | InterruptedException exception) {
             throw new FabricProxyException(exception.getMessage());
         }
         return new String(result, StandardCharsets.UTF_8);
+    }
+
+    public String submitTransaction(String user, String subContractName, String functionName, Map<String, String> transientData) throws FabricProxyException {
+        return this.submitTransaction(user, subContractName, functionName, transientData, new String[0]);
     }
 
     public String submitTransaction(String user, String subContractName, String functionName, String... args) throws FabricProxyException {
-        Gateway gateway = this.setupGateway(user);
-        Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
-        Contract contract = network.getContract(this.proxyConfig.getContractName(), subContractName);
-
-        byte[] result;
-        try {
-            Timer timer = new Timer();
-            timer.tic();
-            result = contract.submitTransaction(functionName, args);
-            System.out.println("[" + subContractName + "." + functionName + "] took " + timer.toc() + "s");
-        } catch (ContractException | TimeoutException | InterruptedException exception) {
-            throw new FabricProxyException(exception.getMessage());
-        }
-        return new String(result, StandardCharsets.UTF_8);
+        return this.submitTransaction(user, subContractName, functionName, null, args);
     }
 
     public String submitTransaction(String user, String subContractName, String functionName) throws FabricProxyException {
-        Gateway gateway = this.setupGateway(user);
-        Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
-        Contract contract = network.getContract(this.proxyConfig.getContractName(), subContractName);
-
-        byte[] result;
-        try {
-            Timer timer = new Timer();
-            timer.tic();
-            result = contract.submitTransaction(functionName, new String[]{});
-            System.out.println("[" + subContractName + "." + functionName + "] took " + timer.toc() + "s");
-        } catch (ContractException | TimeoutException | InterruptedException exception) {
-            throw new FabricProxyException(exception.getMessage());
-        }
-        return new String(result, StandardCharsets.UTF_8);
+        return this.submitTransaction(user, subContractName, functionName, null, new String[0]);
     }
 
     public Consumer<ContractEvent> addContractListener(String user, String subContractName, String eventName, Consumer<ContractEvent> contractListener) throws IOException, FabricProxyException  {
