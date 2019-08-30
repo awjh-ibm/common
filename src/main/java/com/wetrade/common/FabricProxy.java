@@ -5,7 +5,11 @@ package com.wetrade.common;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeoutException;
@@ -23,6 +27,7 @@ import org.hyperledger.fabric.gateway.Wallet;
 import org.hyperledger.fabric.gateway.Wallet.Identity;
 import org.hyperledger.fabric.sdk.BlockEvent;
 import org.json.JSONObject;
+import org.hyperledger.fabric.sdk.Peer;
 
 public class FabricProxy {
 
@@ -99,14 +104,19 @@ public class FabricProxy {
         return new String(result, StandardCharsets.UTF_8);
     }
 
-    public String evaluateTransaction(String user, String subContractName, String functionName) throws FabricProxyException {
-        return this.evaluateTransaction(user, subContractName, functionName, new String[0]);
-    }
-
     public String submitTransaction(String user, String subContractName, String functionName, Map<String, String> transientData, String... args) throws FabricProxyException {
+        return this.submitTransaction(null, user, subContractName, functionName, transientData, args);
+    }
+    public String submitTransaction(String[] peerNames, String user, String subContractName, String functionName, Map<String, String> transientData, String... args) throws FabricProxyException {
         Gateway gateway = this.setupGateway(user);
         Network network = gateway.getNetwork(this.proxyConfig.getChannelName());
         Contract contract = network.getContract(this.proxyConfig.getContractName(), subContractName);
+
+        List<?> peerNamesList = Arrays.asList(peerNames);
+        Collection<Peer> peers = network.getChannel().getPeers();
+        Peer[] filteredPeers = peers.stream().filter((p) -> peerNamesList.contains(p.getName())).toArray(Peer[]::new);
+        List<Peer> filteredPeersList = Arrays.asList(filteredPeers);
+
 
         Map<String, byte[]> transientDataAsBytes = new HashMap<String, byte[]>();
 
@@ -118,6 +128,9 @@ public class FabricProxy {
 
         Transaction tx = contract.createTransaction(functionName);
         tx.setTransient(transientDataAsBytes);
+        if (filteredPeers.length > 0) {
+            tx.setEndorsingPeers(filteredPeersList);
+        }
 
         byte[] result;
         try {
@@ -131,16 +144,28 @@ public class FabricProxy {
         return new String(result, StandardCharsets.UTF_8);
     }
 
+    public String submitTransaction(String[] peerNames, String user, String subContractName, String functionName, Map<String, String> transientData) throws FabricProxyException {
+        return this.submitTransaction(peerNames, user, subContractName, functionName, transientData, new String[0]);
+    }
+
     public String submitTransaction(String user, String subContractName, String functionName, Map<String, String> transientData) throws FabricProxyException {
-        return this.submitTransaction(user, subContractName, functionName, transientData, new String[0]);
+        return this.submitTransaction(new String[]{}, user, subContractName, functionName, transientData, new String[0]);
+    }
+
+    public String submitTransaction(String[] peerNames, String user, String subContractName, String functionName, String... args) throws FabricProxyException {
+        return this.submitTransaction(peerNames, user, subContractName, functionName, null, args);
     }
 
     public String submitTransaction(String user, String subContractName, String functionName, String... args) throws FabricProxyException {
-        return this.submitTransaction(user, subContractName, functionName, null, args);
+        return this.submitTransaction(new String[]{}, user, subContractName, functionName, null, args);
+    }
+
+    public String submitTransaction(String[] peerNames, String user, String subContractName, String functionName) throws FabricProxyException {
+        return this.submitTransaction(peerNames, user, subContractName, functionName, null, new String[0]);
     }
 
     public String submitTransaction(String user, String subContractName, String functionName) throws FabricProxyException {
-        return this.submitTransaction(user, subContractName, functionName, null, new String[0]);
+        return this.submitTransaction(new String[]{}, user, subContractName, functionName, null, new String[0]);
     }
 
     public Consumer<ContractEvent> addContractListener(String user, String subContractName, String eventName, Consumer<ContractEvent> contractListener) throws IOException, FabricProxyException  {
@@ -182,7 +207,7 @@ public class FabricProxy {
 
     public JSONObject getMetadata(String user, String subContractName) throws IOException, ContractException, FabricProxyException {
         String METADATA_FUNC = "org.hyperledger.fabric:GetMetadata";
-        String metadataString = this.evaluateTransaction(user, subContractName, METADATA_FUNC);
+        String metadataString = this.evaluateTransaction(null, user, subContractName, METADATA_FUNC);
         return new JSONObject(metadataString);
     }
 }

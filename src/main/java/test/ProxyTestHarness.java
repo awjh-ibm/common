@@ -68,13 +68,13 @@ public class ProxyTestHarness {
 
             String result;
             if (isSubmit) {
-                result = proxy.submitTransaction(user, contractName, fcnName, fcnArgs);
+                // result = proxy.submitTransaction(user, contractName, fcnName, fcnArgs);
             } else {
-                result = proxy.evaluateTransaction(user, contractName, fcnName, fcnArgs);
+                // result = proxy.evaluateTransaction(user, contractName, fcnName, fcnArgs);
             }
 
 
-            System.out.println(ProxyTestHarness.jsonStringToTable(result));
+            System.out.println(ProxyTestHarness.jsonStringToTable(null));
             // Thread.sleep(100);
         } catch (FabricProxyException exception) {
             exception.printStackTrace();
