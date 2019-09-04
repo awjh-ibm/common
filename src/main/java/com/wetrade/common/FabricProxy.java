@@ -74,8 +74,7 @@ public class FabricProxy {
                 Gateway.Builder builder = Gateway.createBuilder()
                             .identity(this.wallet, user)
                             .networkConfig(proxyConfig.getConnectionProfilePath())
-                            .discovery(false)
-                            .commitHandler(DefaultCommitHandlers.NETWORK_SCOPE_ALLFORTX);
+                            .discovery(true);
                 gateway = builder.connect();
             } catch (IOException exception) {
                 throw new FabricProxyException(exception.getMessage());
