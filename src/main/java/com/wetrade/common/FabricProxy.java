@@ -20,6 +20,7 @@ import com.wetrade.utils.Timer;
 import org.hyperledger.fabric.gateway.Contract;
 import org.hyperledger.fabric.gateway.ContractEvent;
 import org.hyperledger.fabric.gateway.ContractException;
+import org.hyperledger.fabric.gateway.DefaultCommitHandlers;
 import org.hyperledger.fabric.gateway.Gateway;
 import org.hyperledger.fabric.gateway.Network;
 import org.hyperledger.fabric.gateway.Transaction;
@@ -73,7 +74,8 @@ public class FabricProxy {
                 Gateway.Builder builder = Gateway.createBuilder()
                             .identity(this.wallet, user)
                             .networkConfig(proxyConfig.getConnectionProfilePath())
-                            .discovery(false);
+                            .discovery(false)
+                            .commitHandler(DefaultCommitHandlers.NETWORK_SCOPE_ALLFORTX);
                 gateway = builder.connect();
             } catch (IOException exception) {
                 throw new FabricProxyException(exception.getMessage());
